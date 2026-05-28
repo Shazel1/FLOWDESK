@@ -4194,6 +4194,8 @@ function Settings({
   setAccentColor,
   notifEnabled,
   setNotifEnabled,
+  onSignOut,
+  userEmail,
 }) {
   const [name, setName] = useState(userName);
   const saveName = () => setUserName(name);
@@ -4251,7 +4253,42 @@ function Settings({
           }}>
           <User size={16} /> Profile
         </p>
-        <p style={lbl}>Your first name</p>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: "1rem",
+            padding: "12px",
+            background: "var(--sec)",
+            borderRadius: 10,
+          }}>
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: "50%",
+              background: "var(--acc)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "white",
+              fontWeight: 800,
+              fontSize: 20,
+              flexShrink: 0,
+            }}>
+            {userName ? userName[0].toUpperCase() : "U"}
+          </div>
+          <div>
+            <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>
+              {userName || "User"}
+            </p>
+            <p style={{ fontSize: 12, color: "var(--sub)", margin: "2px 0 0" }}>
+              {userEmail || ""}
+            </p>
+          </div>
+        </div>
+        <p style={lbl}>Update display name</p>
         <div style={{ display: "flex", gap: 8 }}>
           <input
             value={name}
@@ -4265,9 +4302,22 @@ function Settings({
         </div>
         {userName && (
           <p style={{ fontSize: 12, color: "#059669", margin: "6px 0 0" }}>
-            ✓ Greeting: "Good morning, {userName}!"
+            ✓ Dashboard greeting: "Good morning, {userName}!"
           </p>
         )}
+        <div
+          style={{
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid var(--bdr)",
+          }}>
+          <p style={{ fontSize: 13, color: "var(--sub)", margin: "0 0 8px" }}>
+            Sign out of your FlowDesk account on this device.
+          </p>
+          <button onClick={onSignOut} style={{ ...btn("#dc2626"), gap: 6 }}>
+            🚪 Sign out
+          </button>
+        </div>
       </div>
 
       <div style={{ ...card, marginBottom: "1rem" }}>
@@ -4496,9 +4546,604 @@ const INIT_HABITS = [
   },
 ];
 
+// ═══════════════════════════════════════════════════════════
+// AUTH — clean centered card, no icons inside inputs
+// ═══════════════════════════════════════════════════════════
+function AuthScreen({ onAuth }) {
+  const [mode, setMode] = useState("signin");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const getUsers = () => {
+    try {
+      return JSON.parse(localStorage.getItem("fd-users") || "[]");
+    } catch {
+      return [];
+    }
+  };
+  const saveUsers = (u) => localStorage.setItem("fd-users", JSON.stringify(u));
+  const switchMode = (m) => {
+    setMode(m);
+    setError("");
+    setSuccess("");
+    setUsername("");
+    setEmail("");
+    setPassword("");
+  };
+
+  const handleSignUp = () => {
+    setError("");
+    setSuccess("");
+    if (!username.trim()) {
+      setError("Please enter a username.");
+      return;
+    }
+    if (!email.includes("@")) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    const users = getUsers();
+    if (users.find((u) => u.email.toLowerCase() === email.toLowerCase())) {
+      setError("This email is already registered. Sign in instead.");
+      return;
+    }
+    const newUser = {
+      username: username.trim(),
+      email: email.toLowerCase().trim(),
+      password,
+    };
+    saveUsers([...users, newUser]);
+    setSuccess("Account created! Taking you in…");
+    setLoading(true);
+    setTimeout(() => onAuth(newUser), 1100);
+  };
+
+  const handleSignIn = () => {
+    setError("");
+    setSuccess("");
+    if (!email.trim()) {
+      setError("Please enter your email.");
+      return;
+    }
+    if (!password) {
+      setError("Please enter your password.");
+      return;
+    }
+    const found = getUsers().find(
+      (u) =>
+        u.email.toLowerCase() === email.toLowerCase().trim() &&
+        u.password === password,
+    );
+    if (!found) {
+      setError("Incorrect email or password. Please try again.");
+      return;
+    }
+    setSuccess(`Welcome back, ${found.username}! 👋`);
+    setLoading(true);
+    setTimeout(() => onAuth(found), 900);
+  };
+
+  const submit = () => (mode === "signin" ? handleSignIn() : handleSignUp());
+
+  /* shared input style — completely plain, no icons, no browser interference */
+  const inp = {
+    display: "block",
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "12px 14px",
+    marginTop: 6,
+    fontSize: 14,
+    fontFamily: "inherit",
+    color: "#0d1117",
+    background: "#f8fafc",
+    border: "1.5px solid #dde3f0",
+    borderRadius: 10,
+    outline: "none",
+    WebkitAppearance: "none",
+    MozAppearance: "none",
+    appearance: "none",
+  };
+
+  const FEATURES = [
+    "🧠 AI Task Prioritization",
+    "🎙️ Voice Copilot",
+    "🔬 Deep Work Studio",
+    "🙏 Gratitude Journal",
+    "🗺️ Mind Mapping",
+    "🔄 Habit Tracker",
+    "📅 Smart Scheduler",
+    "💾 Auto-saves everything",
+  ];
+
+  return (
+    <div
+      className="fd"
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "linear-gradient(135deg,#eef2ff 0%,#f0fdf4 100%)",
+        padding: "1.5rem",
+        boxSizing: "border-box",
+      }}>
+      {/* ── Outer wrapper: two columns on wide screens ── */}
+      <div
+        style={{
+          display: "flex",
+          width: "100%",
+          maxWidth: 900,
+          borderRadius: 20,
+          overflow: "hidden",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.12)",
+        }}>
+        {/* ── LEFT BRANDING (hidden below 640px via inline trick) ── */}
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            background: "#5a67e8",
+            padding: "3rem 2.5rem",
+            color: "white",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+          }}
+          className="fd-auth-left">
+          {/* inject a tiny style to hide this panel on narrow screens */}
+          <style>{`@media(max-width:640px){.fd-auth-left{display:none!important;}}`}</style>
+
+          {/* Logo row */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 24,
+            }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                background: "rgba(255,255,255,0.18)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 22,
+              }}>
+              ⚡
+            </div>
+            <span
+              style={{
+                fontSize: 24,
+                fontWeight: 900,
+                letterSpacing: "-0.5px",
+              }}>
+              FlowDesk
+            </span>
+          </div>
+
+          <h2
+            style={{
+              fontSize: 28,
+              fontWeight: 800,
+              margin: "0 0 10px",
+              lineHeight: 1.25,
+              letterSpacing: "-0.3px",
+            }}>
+            Build the life
+            <br />
+            you envision.
+          </h2>
+          <p
+            style={{
+              fontSize: 14,
+              margin: "0 0 28px",
+              opacity: 0.8,
+              lineHeight: 1.65,
+            }}>
+            Your all-in-one AI-powered productivity suite — plan, execute, and
+            reflect every day.
+          </p>
+
+          {/* Feature list */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {FEATURES.map((f, i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  background: "rgba(255,255,255,0.1)",
+                  borderRadius: 9,
+                  padding: "8px 12px",
+                  fontSize: 13,
+                  fontWeight: 500,
+                }}>
+                {f}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── RIGHT FORM PANEL ── */}
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 420,
+            background: "#ffffff",
+            padding: "2.75rem 2.25rem",
+            boxSizing: "border-box",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            overflowY: "auto",
+          }}>
+          {/* App name (visible on mobile when left panel is hidden) */}
+          <div style={{ marginBottom: 24 }}>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: "#eef2ff",
+                borderRadius: 99,
+                padding: "5px 12px",
+                marginBottom: 14,
+              }}>
+              <span style={{ fontSize: 16 }}>⚡</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#5a67e8" }}>
+                FlowDesk
+              </span>
+            </div>
+            <h2
+              style={{
+                fontSize: 22,
+                fontWeight: 800,
+                margin: "0 0 6px",
+                letterSpacing: "-0.3px",
+                color: "#0d1117",
+              }}>
+              {mode === "signin" ? "Welcome back 👋" : "Create your account ✨"}
+            </h2>
+            <p
+              style={{
+                fontSize: 13,
+                color: "#6b7280",
+                margin: 0,
+                lineHeight: 1.5,
+              }}>
+              {mode === "signin"
+                ? "Sign in to your FlowDesk workspace"
+                : "Join FlowDesk — free, stored on your device"}
+            </p>
+          </div>
+
+          {/* Toggle pill */}
+          <div
+            style={{
+              display: "flex",
+              background: "#f1f5f9",
+              borderRadius: 10,
+              padding: 3,
+              marginBottom: 22,
+            }}>
+            {[
+              ["signin", "Sign In"],
+              ["signup", "Sign Up"],
+            ].map(([m, l]) => (
+              <button
+                key={m}
+                onClick={() => switchMode(m)}
+                style={{
+                  flex: 1,
+                  padding: "9px 0",
+                  borderRadius: 8,
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  fontSize: 13,
+                  fontWeight: mode === m ? 700 : 400,
+                  background: mode === m ? "#ffffff" : "transparent",
+                  color: mode === m ? "#5a67e8" : "#6b7280",
+                  boxShadow: mode === m ? "0 1px 4px rgba(0,0,0,0.1)" : "none",
+                  transition: "all .15s",
+                }}>
+                {l}
+              </button>
+            ))}
+          </div>
+
+          {/* Form fields */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {mode === "signup" && (
+              <div>
+                <label
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "#374151",
+                    display: "block",
+                  }}>
+                  Username
+                </label>
+                <input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="e.g. John"
+                  autoComplete="off"
+                  style={inp}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = "#5a67e8";
+                    e.target.style.background = "#fff";
+                    e.target.style.boxShadow = "0 0 0 3px #eef2ff";
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "#dde3f0";
+                    e.target.style.background = "#f8fafc";
+                    e.target.style.boxShadow = "none";
+                  }}
+                />
+              </div>
+            )}
+
+            <div>
+              <label
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "#374151",
+                  display: "block",
+                }}>
+                Email address
+              </label>
+              <input
+                type="text"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                autoComplete="off"
+                style={inp}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#5a67e8";
+                  e.target.style.background = "#fff";
+                  e.target.style.boxShadow = "0 0 0 3px #eef2ff";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "#dde3f0";
+                  e.target.style.background = "#f8fafc";
+                  e.target.style.boxShadow = "none";
+                }}
+              />
+            </div>
+
+            <div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}>
+                <label
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "#374151",
+                    display: "block",
+                  }}>
+                  Password
+                </label>
+                {mode === "signup" && (
+                  <span style={{ fontSize: 11, color: "#9ca3af" }}>
+                    Min. 6 characters
+                  </span>
+                )}
+              </div>
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") submit();
+                  }}
+                  style={{ ...inp, paddingRight: 56 }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = "#5a67e8";
+                    e.target.style.background = "#fff";
+                    e.target.style.boxShadow = "0 0 0 3px #eef2ff";
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "#dde3f0";
+                    e.target.style.background = "#f8fafc";
+                    e.target.style.boxShadow = "none";
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((p) => !p)}
+                  style={{
+                    position: "absolute",
+                    right: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "2px 4px",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "#9ca3af",
+                    fontFamily: "inherit",
+                  }}>
+                  {showPw ? "Hide" : "Show"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Error banner */}
+          {error && (
+            <div
+              style={{
+                marginTop: 16,
+                padding: "10px 14px",
+                background: "#fef2f2",
+                border: "1.5px solid #fca5a5",
+                borderRadius: 10,
+                fontSize: 13,
+                color: "#dc2626",
+                lineHeight: 1.5,
+              }}>
+              ⚠️ {error}
+            </div>
+          )}
+
+          {/* Success banner */}
+          {success && (
+            <div
+              style={{
+                marginTop: 16,
+                padding: "10px 14px",
+                background: "#f0fdf4",
+                border: "1.5px solid #86efac",
+                borderRadius: 10,
+                fontSize: 13,
+                color: "#15803d",
+                lineHeight: 1.5,
+              }}>
+              ✅ {success}
+            </div>
+          )}
+
+          {/* Submit button */}
+          <button
+            onClick={submit}
+            disabled={loading}
+            style={{
+              marginTop: 20,
+              width: "100%",
+              padding: "13px 0",
+              borderRadius: 11,
+              border: "none",
+              background: loading ? "#9ca3af" : "#5a67e8",
+              color: "white",
+              fontSize: 15,
+              fontWeight: 700,
+              fontFamily: "inherit",
+              cursor: loading ? "not-allowed" : "pointer",
+              letterSpacing: "0.01em",
+            }}>
+            {loading
+              ? "Please wait…"
+              : mode === "signin"
+                ? "Sign In"
+                : "Create Account"}
+          </button>
+
+          {/* Switch mode */}
+          <p
+            style={{
+              fontSize: 12,
+              color: "#9ca3af",
+              textAlign: "center",
+              marginTop: 16,
+              lineHeight: 1.6,
+            }}>
+            {mode === "signin" ? (
+              <>
+                No account yet?{" "}
+                <button
+                  onClick={() => switchMode("signup")}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#5a67e8",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    fontSize: 12,
+                    fontFamily: "inherit",
+                    padding: 0,
+                  }}>
+                  Sign up free
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account?{" "}
+                <button
+                  onClick={() => switchMode("signin")}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#5a67e8",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    fontSize: 12,
+                    fontFamily: "inherit",
+                    padding: 0,
+                  }}>
+                  Sign in
+                </button>
+              </>
+            )}
+          </p>
+          <p
+            style={{
+              fontSize: 11,
+              color: "#c4c9d4",
+              textAlign: "center",
+              margin: "6px 0 0",
+            }}>
+            🔒 Data stored locally on your device only
+          </p>
+        </div>
+        {/* end right panel */}
+      </div>
+      {/* end outer wrapper */}
+    </div>
+  );
+}
+
+// Palette icon (used in Settings, not imported from lucide in this build)
+function Palette({ size = 16 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round">
+      <circle cx="13.5" cy="6.5" r=".5" />
+      <circle cx="17.5" cy="10.5" r=".5" />
+      <circle cx="8.5" cy="7.5" r=".5" />
+      <circle cx="6.5" cy="12.5" r=".5" />
+      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+    </svg>
+  );
+}
+
 export default function App() {
+  // Auth state — persists the logged-in user's info
+  const [currentUser, setCurrentUser] = useLS("fd-current-user", null);
+
   const [view, setView] = useLS("fd-view", "dashboard");
-  const [userName, setUserName] = useLS("fd-username", "");
   const [themeMode, setThemeMode] = useLS("fd-theme-mode", "light");
   const [accentColor, setAccentColor] = useLS("fd-accent", "indigo");
   const [notifEnabled, setNotifEnabled] = useLS("fd-notif", false);
@@ -4507,6 +5152,20 @@ export default function App() {
   const [habits, setHabits] = useLS("fd-habits", INIT_HABITS);
   const [mobile, setMobile] = useState(false);
 
+  // userName is always pulled from the logged-in user
+  const userName = currentUser?.username || "";
+  const setUserName = (name) =>
+    setCurrentUser((u) => ({ ...u, username: name }));
+
+  const handleAuth = (user) => {
+    setCurrentUser(user);
+    setView("dashboard");
+  };
+  const handleSignOut = () => {
+    setCurrentUser(null);
+    setView("dashboard");
+  };
+
   useTheme(themeMode, accentColor);
   useEffect(() => {
     const c = () => setMobile(window.innerWidth < 720);
@@ -4514,6 +5173,14 @@ export default function App() {
     window.addEventListener("resize", c);
     return () => window.removeEventListener("resize", c);
   }, []);
+
+  // Show auth screen if not logged in
+  if (!currentUser)
+    return (
+      <div className="fd">
+        <AuthScreen onAuth={handleAuth} />
+      </div>
+    );
 
   const NAV = [
     { id: "dashboard", label: "Home", icon: "🏠" },
@@ -4599,41 +5266,117 @@ export default function App() {
           <div
             style={{
               marginTop: "auto",
-              padding: "12px 10px",
-              background: "var(--sec)",
-              borderRadius: 10,
-              border: "1px solid var(--bdr)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
             }}>
-            <p style={{ fontSize: 11, color: "var(--sub)", margin: "0 0 3px" }}>
-              Tasks completed
-            </p>
-            <p
-              style={{
-                fontSize: 22,
-                fontWeight: 700,
-                margin: 0,
-                color: "var(--acc)",
-              }}>
-              {tasks.filter((t) => t.done).length}/{tasks.length}
-            </p>
             <div
               style={{
-                marginTop: 6,
-                height: 4,
-                background: "var(--bdr)",
-                borderRadius: 2,
-                overflow: "hidden",
+                padding: "12px 10px",
+                background: "var(--sec)",
+                borderRadius: 10,
+                border: "1px solid var(--bdr)",
               }}>
               <div
                 style={{
-                  height: "100%",
-                  width: `${tasks.length > 0 ? (tasks.filter((t) => t.done).length / tasks.length) * 100 : 0}%`,
-                  background: "var(--acc)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginBottom: 6,
+                }}>
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    background: "var(--acc)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "white",
+                    fontWeight: 800,
+                    fontSize: 14,
+                    flexShrink: 0,
+                  }}>
+                  {userName ? userName[0].toUpperCase() : "U"}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      margin: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}>
+                    {userName || "User"}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 10,
+                      color: "var(--sub)",
+                      margin: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}>
+                    {currentUser?.email || ""}
+                  </p>
+                </div>
+              </div>
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "var(--sub)",
+                  margin: "0 0 3px",
+                }}>
+                Tasks completed
+              </p>
+              <p
+                style={{
+                  fontSize: 22,
+                  fontWeight: 700,
+                  margin: 0,
+                  color: "var(--acc)",
+                }}>
+                {tasks.filter((t) => t.done).length}/{tasks.length}
+              </p>
+              <div
+                style={{
+                  marginTop: 6,
+                  height: 4,
+                  background: "var(--bdr)",
                   borderRadius: 2,
-                  transition: "width .3s",
-                }}
-              />
+                  overflow: "hidden",
+                }}>
+                <div
+                  style={{
+                    height: "100%",
+                    width: `${tasks.length > 0 ? (tasks.filter((t) => t.done).length / tasks.length) * 100 : 0}%`,
+                    background: "var(--acc)",
+                    borderRadius: 2,
+                    transition: "width .3s",
+                  }}
+                />
+              </div>
             </div>
+            <button
+              onClick={handleSignOut}
+              style={{
+                width: "100%",
+                padding: "8px",
+                borderRadius: 10,
+                border: "1px solid #fca5a5",
+                background: "#fef2f2",
+                color: "#dc2626",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                fontSize: 12,
+                fontWeight: 600,
+              }}>
+              🚪 Sign out
+            </button>
           </div>
         </nav>
       )}
@@ -4672,6 +5415,8 @@ export default function App() {
             setAccentColor={setAccentColor}
             notifEnabled={notifEnabled}
             setNotifEnabled={setNotifEnabled}
+            onSignOut={handleSignOut}
+            userEmail={currentUser?.email}
           />
         )}
       </main>
